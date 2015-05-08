@@ -1,0 +1,155 @@
+package edu.ucsd.cwphs.palms.gps;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import edu.ucsd.cwphs.palms.util.EventLogger;
+
+// TODO:  This hides the fact that GPSResultSets are processed GPSTracks
+//			GPSResult should really extend TrackPoint.
+
+public class GPSResultSet {
+	
+	private GPSTrack gpsTrack = new GPSTrack();
+
+	
+	public GPSResultSet(){
+		this.gpsTrack = new GPSTrack();
+	}
+	
+	public GPSResultSet(GPSTrack gpsTrack){
+		this.gpsTrack = gpsTrack;
+	}
+	
+	public int getSize(){
+		return gpsTrack.getSize();
+	}
+	
+	public ArrayList<TrackPoint> getResults(){
+		return gpsTrack.getTrackPoints();
+	}
+	
+	public String toJSON(){
+		return gpsTrack.resultsToJSON();
+	}
+	
+	public String fromJSON(String json){
+		JSONObject obj = new JSONObject(json);
+		return fromJSONObject(obj);
+	}
+	
+	public String fromJSONObject(JSONObject obj){
+		String dateTime = null;
+		Date date = null;
+		String nSat = null, qsatInfo = null;
+		Double lat, lon, ele, speed;
+		int dow, duration, distance, bearing, bearingDelta, eleDelta, fixTypeCode, iov = -1;
+		int tripNumber, tripType, tripMOT, locationNumber, locationClusterFlag;
+		String result = null;
+		
+		JSONArray array = getJSONArray(obj, "GPS_DPU_output_variables");
+		if (array == null){
+			EventLogger.logWarning("GPSResultSet.fromJSONObject - GPS_DPU_output_variables not found");
+			return "error: GPS_DPU_output_variables not found";
+		}
+
+		for (int index=0; index < array.length(); index++) {
+			try {
+				JSONObject item = array.getJSONObject(index);
+				dateTime = item.getString("date_time");
+				// dow = item.getInt("dow");
+				lat = item.getDouble("lat");
+				lon = item.getDouble("lon");
+				ele = item.getDouble("ele");
+				duration = item.getInt("duration");
+				distance = item.getInt("distance");
+				speed = item.getDouble("speed");
+				bearing = item.getInt("bearing");
+				bearingDelta = item.getInt("bearing_delta");
+				eleDelta = item.getInt("ele_delta");
+				fixTypeCode = item.getInt("fix_type_code");
+				// iov = item.getInt("iov");
+				tripNumber = item.getInt("trip_number");
+				tripType = item.getInt("trip_type");
+				tripMOT = item.getInt("trip_mot");
+				locationNumber = item.getInt("location_number");
+				locationClusterFlag = item.getInt("location_cluster_flag");
+				
+				SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss'Z'");
+				try {
+					date = sdf.parse(dateTime);
+				}
+				catch (Exception ex){
+					EventLogger.logWarning("GPSTrack.addTrackPoint - dateTime has invalid format:" + dateTime);
+				}
+				
+				TrackPoint tp = new TrackPoint(date, lat, lon, ele, null, null); 
+				tp.setDuration(duration);
+				tp.setDistance(distance);
+				tp.setSpeed(speed);
+				tp.setBearing(bearing);
+				tp.setBearingDelta(bearingDelta);
+				tp.setElevationDelta(eleDelta);
+				tp.setFixType(fixTypeCode);
+				tp.setTripNumber(tripNumber);
+				tp.setTripType(tripType);
+				tp.setTripMode(tripMOT);
+				tp.setLocationNumber(locationNumber);
+				tp.setClusterFlag(locationClusterFlag);
+				
+				gpsTrack.add(tp);;
+
+			}
+			catch (Exception ex){
+				EventLogger.logException("GPSResultSet.fromJSON - error parsing JSON - index = "+ index, ex);
+			}
+		} // end for
+		return result;
+	}
+	
+	private JSONObject getJSONObject(JSONObject obj, String key){
+		JSONObject o  = null;
+		try {
+			o = obj.getJSONObject(key);
+		}
+		catch (Exception ex){
+		}
+		return o;
+	}
+	
+	private JSONArray getJSONArray(JSONObject obj, String key){
+		JSONArray a = null;
+		try {
+			a = obj.getJSONArray(key);
+		}
+		catch (Exception ex){
+		}
+		return a;
+	}
+
+	private String getJSONString(JSONObject obj, String key){
+		String s = null;
+		try {
+			s = obj.getString(key);
+		}
+		catch (Exception ex){
+		}
+		return s;
+	}
+
+	private Double getJSONDouble(JSONObject obj, String key){
+		Double d = -999.0;
+		try {
+			d = obj.getDouble(key);
+		}
+		catch (Exception ex){
+		}
+		return d;
+	}
+
+	
+}
