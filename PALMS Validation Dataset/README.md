@@ -1,0 +1,3 @@
+# md2k-PALMS
+**PALMS Validation Dataset**
+In order to validate the PALMS system, CWPHS researchers produced an annotated dataset of GPS and accelerometer data collected by research assistants over a two month period.  The assistants followed prescribed transit routes that include multiple modes of transportation (walking, automotive, bus) in multiple urban settings in San Diego.  The assistants kept detailed logs noting the time and starting / ending locations of each trip, stationary periods and mode of transportation.  These logs were used to produce second-by-second "truth files" which were compared against the output of the PALMS algorithms.  Details of the validation study can be found in the document entitled "PALMS Validation Study Design".
