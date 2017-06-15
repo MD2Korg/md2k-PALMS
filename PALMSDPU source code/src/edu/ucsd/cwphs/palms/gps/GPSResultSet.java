@@ -29,8 +29,151 @@ public class GPSResultSet {
 		return gpsTrack.getSize();
 	}
 	
+	public TrackPoint get(int index){
+		return gpsTrack.getTrackPoint(index);
+	}
+	
 	public ArrayList<TrackPoint> getResults(){
 		return gpsTrack.getTrackPoints();
+	}
+	
+	public static String csvHeader(){
+		return TrackPoint.resultsCSVheader();
+	}
+	
+	public static String csvHeaderPALMSformat(){
+		return "identitifer,dateTime,dow,lat,lon,ele,duration,distance,speed,bearing,bearingDelta," +
+				"elevationDelta,fixType,fixTypeCode,iov,tripNumber,tripType,tripMode,tripMOT,locationNumber,locationClusterFlag," +
+				"nsatView,nsatUsed,snrView,snrUsed";
+	}
+	
+	public String getPALMSformat(String identifier, String timezone, int index){
+		TrackPoint tp = gpsTrack.getTrackPoint(index);
+		if (tp == null)
+			return ("Error - out of range index:"+index + "\n");
+		
+		StringBuffer sb = new StringBuffer(identifier + ",");
+		sb.append(convertTime(tp, timezone) + ",");
+		sb.append(tp.getLat() + ",");
+		sb.append(tp.getLon() + ",");
+		sb.append(tp.getEle() + ",");
+		sb.append(tp.getDuration() + ",");
+		sb.append(tp.getDistance() + ",");
+		sb.append(tp.getSpeed() + ",");
+		sb.append(tp.getBearing() + ",");
+		sb.append(tp.getBearingDelta() + ",");
+		sb.append(tp.getElevationDelta() + ",");
+		sb.append(oldPALMSfixType(tp) + "," );
+		sb.append(tp.getFixType() + ",");
+		sb.append(tp.getIndoorsEstimate() + ",");
+		sb.append(tp.getTripNumber() + ",");
+		sb.append(tp.getTripType() + ",");
+		sb.append(oldPALMStripMode(tp) + ",");
+		sb.append(tp.getTripMode() + ",");
+		sb.append(tp.getLocationNumber() + ",");
+		sb.append(tp.getClusterFlag() + ",");
+		sb.append(tp.getSatsInView() + ",");
+		sb.append(tp.getSatsUsed() + ",");
+		sb.append(tp.getSnrView() + ",");
+		sb.append(tp.getSnrUsed() + "\n");
+		return sb.toString();
+	}
+	
+	private String convertTime(TrackPoint tp, String timezone){
+		return tp.getDateTimeStr() + ",-1";			// TODO: need to implement tz and dow	
+	}
+	
+	private String oldPALMSfixType(TrackPoint tp){
+		StringBuffer sb = new StringBuffer();
+		String s = "";
+		// indicate fixType
+		
+		switch (tp.getFixType()){
+		case 0:	s = "invalid + ";
+				break;
+		case 1: s = "valid + ";
+				break;
+		case 2: s = "firstfix + ";
+				break;
+		case 3:	s = "lastfix + ";
+				break;
+		case 4:	s = "lastvalidfix + ";
+				break;
+		case 5: s = "lonefix + ";
+				break;
+		case 6: s = "inserted + ";
+				break;
+		default: s = "";
+		}
+		sb.append(s);
+		
+		// indicate indoors / outdoors
+		
+		if (tp.getIndoorsEstimate() == 0)
+			sb.append("outdoors +");
+		else
+			if (tp.getIndoorsEstimate() == 1)
+				sb.append("indoors + ");
+			else
+				if (tp.getIndoorsEstimate() == 2)
+					sb.append("invehicle + ");
+		
+		// indicate trip type
+		switch (tp.getTripType()){
+		case 0:	s = "stationary + ";
+				break;
+		case 1: s = "startpoint + ";
+				break;
+		case 2: s = "midpoint + ";
+				break;
+		case 3:	s = "pausepoint + ";
+				break;
+		case 4:	s = "endpoint + ";
+				break;
+		default: s = "";
+		}
+		sb.append(s);
+		
+		// indicate location clustering
+		
+		if (tp.getClusterFlag() == 1)
+			sb.append("clustered");
+		else
+			if (tp.getClusterFlag() == 2)
+				sb.append("clustered_center");
+		
+		// remove trailing + if present
+		s = sb.toString();
+		int len = s.length();
+		int i = s.lastIndexOf(" + ");
+		if (i+3 == len)
+			s = s.substring(0, i);		
+		return s;
+	}
+	
+	private String oldPALMStripMode(TrackPoint tp){
+		String mode = "unknown";
+		switch (tp.getTripMode()){
+
+		case 0:	mode = "stationary";
+		break;
+
+		case 1: mode = "pedestrian";
+		break;
+
+		case 2: mode = "bicycle";
+		break;
+
+		case 3:	mode = "vehicle";
+		break;
+
+		default:mode = "unknown";		
+		}
+		return mode;
+	}
+	
+	public String toCSV(){
+		return gpsTrack.resultsToCSV();
 	}
 	
 	public String toJSON(){

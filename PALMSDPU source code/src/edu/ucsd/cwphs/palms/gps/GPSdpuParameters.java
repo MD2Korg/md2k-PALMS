@@ -56,7 +56,8 @@ public class GPSdpuParameters {
 	public boolean gps_trip_detect = true;
 	public int gps_trip_min_distance = 34; // min change in distance in meters
 	// (over 60 seconds)
-	// 1kph = 17 meters/minute,  2=34, 3=51
+	// average walking speed = 5 kph
+	// 1kph = 17 meters/minute,  2=34, 3=51, 4=68, 5=85
 	public int gps_trip_min_length = 100; // min trip length (in meters)
 	public int gps_trip_min_pause = 180; // min pause duration in seconds
 	public int gps_trip_max_pause = 300; // max pause duration in seconds
@@ -166,8 +167,14 @@ public class GPSdpuParameters {
 	}
 	
 	public String fromJSON(String json){
+		try {
 		JSONObject obj = new JSONObject(json);
 		return fromJSONObject(obj);
+		}
+		catch (Exception ex){
+			EventLogger.logException("GPSdpuParameters.fromJSON - error parsing JSON string - verify parameters used in calculation", ex);
+			return null;
+		}
 	}
 			
 	public String fromJSONObject(JSONObject obj){
@@ -360,5 +367,174 @@ public class GPSdpuParameters {
 		}
 		return b;
 	}
+	/*
+	public boolean fromCSV(String fileName){
+			Integer i = null;
+			Boolean b = null;
+			String error = null;
+			
+			String function;
+			String parameter;
+			String value;
+			
+			if (function.equalsIgnoreCase("general")){
+				if (parameter.equalsIgnoreCase("interval"))
+					interval = getInt(value, interval);
+				if (parameter.equalsIgnoreCase("insert_missing"))
+					merge_insertMissingTrackpoints = getBoolean(value, merge_insertMissingTrackpoints);
+				
+			
+					JSONObject general = getJSONObject(parameters, "general");
+					if (general != null){
+						i = getJSONInt(general, "interval");
+						if (i != null)
+							interval = i;
+						b = getJSONBoolean(general, "insert_missing");
+						if (b != null)
+							this.merge_insertMissingTrackpoints = b;
+						b = getJSONBoolean(general, "insert_until");
+						if (b != null)
+							this.merge_insert_max = b;
+						i = getJSONInt(general, "insert_max_seconds");
+						if (i != null)
+							this.merge_insert_max_seconds = i;
+						i = getJSONInt(general, "los_max_duration");
+						if (i != null)
+							this.gps_filter_max_los = i;
+					}
+			}
+
+				if (function.equalsIgnoreCase("filter_options")){
+					
+					JSONObject filter = getJSONObject(parameters, "filter_options");
+					if (filter != null){
+						b = getJSONBoolean(filter,"remove_lone");
+						if (b != null)
+							this.gps_filter_lonefixes = b;
+						i = getJSONInt(filter, "filter_invalid");
+						if (i != null)
+							this.gps_filter_invalid = i;
+						i = getJSONInt(filter, "max_speed");
+						if (i != null)
+							this.gps_filter_max_speed = i;
+						i = getJSONInt(filter, "max_ele_change");
+						if (i != null)
+							this.gps_filter_max_elevation_delta = i;
+						i = getJSONInt(filter, "min_change_3_fixes");
+						if (i != null)
+							this.gps_filter_min_distance_delta = i;
+					}
+				}
+					
+					JSONObject indoors = getJSONObject(parameters, "detect_indoors");
+					if (indoors != null){
+						b = getJSONBoolean(indoors,"enabled");
+						if (b != null)
+							this.gps_indoors_detect = b;
+						i = getJSONInt(indoors, "max_sat_ratio");
+						if (i != null)
+							this.gps_indoors_sat_ratio = i;
+						i = getJSONInt(indoors, "max_SNR_value");
+						if (i != null)
+							this.gps_indoors_max_snr = i;
+					}
+					
+					JSONObject trip = getJSONObject(parameters, "trip_detection");
+					if (trip != null){
+						i = getJSONInt(trip, "min_distance");
+						if (i != null)
+							this.gps_trip_min_distance = i;
+						i = getJSONInt(trip, "min_trip_length");
+						if (i != null)
+							this.gps_trip_min_length = i;
+						i = getJSONInt(trip, "min_trip_duration");
+						if (i != null)
+							this.gps_trip_min_duration = i;
+						i = getJSONInt(trip, "min_pause_duration");
+						if (i != null)
+							this.gps_trip_min_pause = i;
+						i = getJSONInt(trip, "max_pause_duration");
+						if (i != null)
+							this.gps_trip_max_pause = i;
+						i = getJSONInt(trip, "max_percent_single_location");
+						if (i != null)
+							this.gps_trip_percentage_one_location = i;
+						i = getJSONInt(trip, "max_percent_allowed_indoors");
+						if (i != null)
+							this.gps_trip_percentage_indoors = i;
+						b = getJSONBoolean(trip,"remove_indoor_fixes");
+						if (b != null)
+							this.gps_trip_trim_indoor_points = b;
+					}
+					
+					JSONObject location = getJSONObject(parameters, "location_detection");
+					if (location != null){
+						b = getJSONBoolean(location, "include_trip_pauses");
+						if (b != null)
+							this.gps_cluster_include_pauses = b;
+						b = getJSONBoolean(location, "trap_indoor_fixes");
+						if (b != null)
+							this.gps_cluster_trap_indoors = b;
+						b = getJSONBoolean(location, "trap_outdoor_fixes");
+						if (b != null)
+							this.gps_cluster_trap_outdoors = b;
+						b = getJSONBoolean(location, "trap_trip_fixes");
+						if (b != null)
+							this.gps_cluster_trap_trips = b;
+						b = getJSONBoolean(location, "allow_non_trips");
+						if (b != null)
+							this.gps_cluster_allow_wo_trips = b;
+						i = getJSONInt(location, "location_radius");
+						if (i != null)
+							this.gps_cluster_radius = i;
+						i = getJSONInt(location, "min_duration_at_location");
+						if (i != null)
+							this.gps_cluster_min_duration = i;
+					}
+					
+					JSONObject mot = getJSONObject(parameters, "mode_of_transportation");
+					if (mot != null){
+						i = getJSONInt(mot, "vehicle_cutoff");
+						if (i != null)
+							this.gps_speed_vehicle = i;
+						i = getJSONInt(mot, "bicycle_cutoff");
+						if (i != null)
+							this.gps_speed_bicycle = i;
+						i = getJSONInt(mot, "walk_cutoff");
+						if (i != null)
+							this.gps_speed_walk = i;
+						i = getJSONInt(mot, "percentile_to_sample");
+						if (i != null)
+							this.gps_speed_percentile = i;
+						i = getJSONInt(mot, "min_segment_length");
+						if (i != null)
+							this.gps_speed_segment_length = i;
+					}				
+				}
+				catch (Exception ex){
+					EventLogger.logException("GPSdpuParameters - error parsing JSON" , ex);
+					error = "\"error\": \"error parsing JSON\"";
+				}
+			return error;
+		}
+	}
+	*/
 	
+	private int getInt(String value, int oldValue){
+		try {
+			return Integer.parseInt(value);
+		}
+		catch (Exception ex){
+			return oldValue;
+		}
+	}
+	
+		private boolean getBoolean(String value, boolean oldValue){
+			try {
+				return Boolean.parseBoolean(value);
+			}
+			catch (Exception ex){
+				return oldValue;
+			}	
+		}
 }

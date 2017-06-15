@@ -50,6 +50,10 @@ public class GPSdpu {
 		return true;
 	}
 	
+	public GPSTrack getTrack(){
+		return this.track;					// used to return processed track
+	}
+	
 	public GPSResultSet getResultSet(){
 		return new GPSResultSet(track);
 	}

@@ -138,7 +138,7 @@ public String resultsToJSON(){
 	return json;
 	}
 
-public String resultsCSVheader(){
+public static String resultsCSVheader(){
 	// TODO: Insert iov when available
 	String s = "dateTime, lat, lon, ele, duration, distance, speed, bearing, bearingDelta, eleDelta, " +
 				"fixType, tripNumber, tripType, tripMOT, locationNumber, locCluster";
