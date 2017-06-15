@@ -12,8 +12,8 @@ import edu.ucsd.cwphs.palms.util.EventLogger;
 
 public class GooglePlaces {
 
-	//  *** replace with your API key for Google Places ***
-	private String APIKEY = "INSERT_YOUR_API_KEY";
+	// keys registered to fraab@ucsd.edu
+	private String APIKEY = "AIzaSyAnyvzYF9XtO0stlqEqELQQ2S78KJFWuYg";
 	private final String PLACESURL = "https://maps.googleapis.com/maps/api/place";
 	private final String RETURNTYPE = "json";
 	
@@ -21,6 +21,7 @@ public class GooglePlaces {
 	private int GOODFOR = 30;			// expires in 30 days
 	
 	private static int apiUsageCount = 0;
+	private static boolean quotaExceeded = false;
 	
 	public GooglePlaces(String apiKey){
 		setAPIkey(apiKey);
@@ -35,13 +36,25 @@ public class GooglePlaces {
 		return apiUsageCount;
 	}
 	
+	public int clearApiUsageCount(){
+		int i = apiUsageCount;
+		apiUsageCount = 0;
+		return i;
+	}
+	
+	// TODO: How would this be reset by a webservice ?
+	public void resetQuotaExceeded(){
+		quotaExceeded = false;
+	}
+	
+	
 	public ArrayList<POI> getNearBy(Double lat, Double lon, int radius){
 		String api = NEARBYURL + "location=" + lat + "," + lon + "&radius=" + radius;
 		String json = callGooglePlaces(api);
 		if (gotError(json))
 			return null;
 		else
-			return getPOIsFromJSON(json);	
+			return getPOIsFromJSON(json, "", lat, lon);	// returns any type
 	}
 	
 	public ArrayList<POI> getNearBy(String lat, String lon, int radius){
@@ -50,32 +63,39 @@ public class GooglePlaces {
 		if (gotError(json))
 			return null;
 		else
-			return getPOIsFromJSON(json);	
+			{
+				Double dlat = Double.parseDouble(lat);
+				Double dlon = Double.parseDouble(lon);
+				return getPOIsFromJSON(json, "", dlat, dlon);
+			}
 	}
 	
-	public ArrayList<POI> getNearBy(String lat, String lon, int radius, String types){
+	public ArrayList<POI> getNearBy(String lat, String lon, int radius, String requestedType){
 		String api = NEARBYURL + "location=" + lat + "," + lon + "&radius=" + radius;
-		if (types != null && types.length() > 0)
-				api = api + "&types=" + types;
+		if (requestedType != null && requestedType.length() > 0)
+				api = api + "&type=" + requestedType;
+		String json = callGooglePlaces(api);
+		if (gotError(json))
+			return null;
+		else {
+			Double dlat = Double.parseDouble(lat);
+			Double dlon = Double.parseDouble(lon);
+			return getPOIsFromJSON(json, requestedType, dlat, dlon);
+		}
+	}
+	
+	public ArrayList<POI> getNearBy(Double lat, Double lon, int radius, String requestedType){
+		String api = NEARBYURL + "location=" + lat + "," + lon + "&radius=" + radius;
+		if (requestedType != null && requestedType.length() > 0)
+			api = api + "&type=" + requestedType;
 		String json = callGooglePlaces(api);
 		if (gotError(json))
 			return null;
 		else
-			return getPOIsFromJSON(json);	
+			return getPOIsFromJSON(json, requestedType, lat, lon);	
 	}
 	
-	public ArrayList<POI> getNearBy(Double lat, Double lon, int radius, String types){
-		String api = NEARBYURL + "location=" + lat + "," + lon + "&radius=" + radius;
-		if (types != null && types.length() > 0)
-			api = api + "&types=" + types;
-		String json = callGooglePlaces(api);
-		if (gotError(json))
-			return null;
-		else
-			return getPOIsFromJSON(json);	
-	}
-	
-	private ArrayList<POI> getPOIsFromJSON(String json){
+	private ArrayList<POI> getPOIsFromJSON(String json, String requestedType, Double requestedLat, Double requestedLon){
 		ArrayList<POI> results = new ArrayList<POI>();
 		Double lat = -180.0, lon = -180.0;
 		String name, placeId, vicinity = null, postalAddress = null;
@@ -85,7 +105,7 @@ public class GooglePlaces {
 
 		JSONArray array = obj.getJSONArray("results");
 		if (array == null){
-			EventLogger.logWarning(".fromJSON - no places found.");
+			EventLogger.logWarning("GooglePlaces.getPOIsFromJSON - no results found.");
 			return results;
 		}
 
@@ -96,12 +116,12 @@ public class GooglePlaces {
 				// parse lat/lon
 				JSONObject geometry = item.getJSONObject("geometry");
 				if (geometry == null) {
-					EventLogger.logWarning(".fromJSON - no geometry found.");
+					EventLogger.logWarning("GooglePlaces.getPOIsFromJSON - no geometry found.");
 				}
 				else {
 					JSONObject location = geometry.getJSONObject("location");
 					if (location == null){
-						EventLogger.logWarning(".fromJSON - no location found.");
+						EventLogger.logWarning("GooglePlaces.getPOIsFromJSON - no location found.");
 					}
 					else {
 						lat = getJSONDouble(location, "lat");
@@ -115,11 +135,20 @@ public class GooglePlaces {
 				postalAddress = getJSONString(item, "postal_address");
 				if (postalAddress == null)
 					postalAddress = vicinity;
+				else {
+					String state = getJSONString(item, "administrative_area_level_1");
+					if (state != null)
+						postalAddress = postalAddress + " " + state;
+					String zip = getJSONString(item, "postal_code");
+					if (zip != null)
+						postalAddress = postalAddress + " " + zip;
+				}
 				
 				types = parseTypes(item);
 
-				POI poi = new POI(placeId, name, POI.SCOPEGOOGLE, types, vicinity, postalAddress, lat, lon);
+				POI poi = new POI(placeId, name, POI.SCOPEGOOGLE, types, requestedType, vicinity, postalAddress, lat, lon);
 				poi.setDateToExpire(GOODFOR);
+				poi.setDistance(poi.getDistanceFrom(requestedLat, requestedLon));
 				results.add(poi);
 			}
 			catch (Exception ex){
@@ -153,7 +182,7 @@ public class GooglePlaces {
 		String types = "";		
 		JSONArray array = item.getJSONArray("types");
 		if (array == null){
-			EventLogger.logWarning(".fromJSON - no types found.");
+			EventLogger.logWarning("GooglePlaces.getPOIsFromJSON - no types found.");
 			return "";
 		}
 		// loop thru array
@@ -177,6 +206,10 @@ public class GooglePlaces {
 		URL url = null;
 		HttpURLConnection urlConn = null;
 		DataInputStream dataStreamIn = null;
+		
+		if (quotaExceeded){
+			return null;
+		}
 
 		try {
 			url = new URL(api);
@@ -216,6 +249,9 @@ public class GooglePlaces {
 		String error = getJSONString(obj, "error_message");
 		if (error != null){
 			EventLogger.logError("GooglePlaces returned error:" + error);
+			if (error.contains("exceeded"))
+				quotaExceeded = true;
+			
 			return true;
 		}
 		else {

@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import edu.ucsd.cwphs.palms.gps.WayPoint;
 
+
 public class POI {
 	public static final String SCOPEGOOGLE = "Google";
 	public static final String SCOPEYELP = "Yelp";
@@ -17,6 +18,7 @@ public class POI {
 														// will need to parse JSON for Google places results
 	
 	private String types = "";
+	private String md2kTypes = "";
 	private String placeId = "";
 	private String name = "";
 	private String scope = "";
@@ -25,13 +27,17 @@ public class POI {
 	
 	private double lat = WayPoint.UNKNOWNCOORDINATES;
 	private double lon = WayPoint.UNKNOWNCOORDINATES;
+	private int distance = -1;
+	private int buffer = -1;
 	
 	private Date dateCached = null;
 	private Date dateExpires = null;
 	
+	public POI(){};
 	
-	public POI(String placeId, String name, String scope, String types, String vicinity, String postalAddress, double lat, double lon){
+	public POI(String placeId, String name, String scope, String types, String md2kTypes, String vicinity, String postalAddress, double lat, double lon){
 		this.types = types;
+		this.md2kTypes = md2kTypes;
 		this.name = name;
 		this.scope = scope;
 		this.vicinity = vicinity;
@@ -46,17 +52,20 @@ public class POI {
 		
 	}
 	
-	public POI (String scope, String types, double lat, double lon){
+	public POI (String scope, String types, String md2kTypes, double lat, double lon, int buffer){
 		this.scope = scope;
 		this.types = types;
+		this.md2kTypes = md2kTypes;
 		this.lat = lat;
 		this.lon = lon;
 		this.name = NOPOINEARBY;
+		this.buffer = buffer;
 		this.dateCached = new Date();
 		setDateToExpire(NOPOIEXPIRES);
 		this.placeId = UUID.randomUUID().toString();	
 	}
 	
+	// HOW IS THIS USED?
 	public POI(String line){
 		int i = line.indexOf(SEPERATOR);
 		int j = line.indexOf(SEPERATOR, i+1);
@@ -81,8 +90,11 @@ public class POI {
 			return true;
 	}
 	
-	public boolean nothingNearBy(){
-		return name.equalsIgnoreCase(NOPOINEARBY);
+	public boolean isNothingNearBy(){
+		if (name.equalsIgnoreCase(NOPOINEARBY))
+			return true;	
+		else
+			return false;
 	}
 	
 	public void setDateToExpire(int days){
@@ -101,8 +113,28 @@ public class POI {
 		return lon;
 	}
 	
+	public int getDistance(){
+		return distance;
+	}
+	
+	public void setDistance(int distance){
+		this.distance = distance;
+	}
+	
+	public int getBuffer(){
+		return buffer;
+	}
+	
+	public void setBuffer(int buffer){
+		this.buffer = buffer;
+	}
+	
 	public String getTypes(){
 		return types;
+	}
+	
+	public String getMd2kTypes(){
+		return md2kTypes;
 	}
 	
 	public String getPlaceId(){
@@ -141,7 +173,7 @@ public class POI {
 	}
 	
 	public String CSVheader(){
-		String s = "placeId, name, scope, types, vicinity, postalAddress, lat, lon, ele";
+		String s = "placeId, name, source, types, md2kTypes, vicinity, postalAddress, lat, lon, ele";
 		return s;
 	}
 	
@@ -150,25 +182,52 @@ public class POI {
 		sb.append(name + ",");
 		sb.append(scope + ",");
 		sb.append("\"" + types + "\",");
+		sb.append("\"" + md2kTypes + "\",");
 		sb.append("\"" + vicinity + "\",");
 		sb.append("\"" + postalAddress + "\",");
 		sb.append(lat + ",");
-		sb.append(lon);
+		sb.append(lon + ",");
+		sb.append(buffer);
 		return sb.toString();		
 	}
 	
 	public String toJSON(){
+		
+		// remove chars that cause problems converting to JSON
+		placeId = removeJSONchars(placeId);
+		name = removeJSONchars(name);
+		vicinity = removeJSONchars(vicinity);
+		postalAddress = removeJSONchars(postalAddress);
+		
 		StringBuilder sb = new StringBuilder("\"poi_details\": {");
 		sb.append("\"place_id\":\"" + placeId + "\",");
 		sb.append("\"name\":\"" + name + "\",");
 		sb.append("\"source\":\"" + scope + "\",");
 		sb.append("\"types\":\"" + types + "\",");
+		sb.append("\"md2kTypes\":\"" + md2kTypes + "\",");
 		sb.append("\"vicinity\":\"" + vicinity + "\",");
 		sb.append("\"postal_address\":\"" + postalAddress + "\",");
 		sb.append("\"lat\":" + lat + ",");
-		sb.append("\"lon\":" + lon);
+		sb.append("\"lon\":" + lon+ ",");
+		sb.append("\"distance\":" + distance);
 		sb.append("}");
 		return sb.toString();
+	}
+	
+	// remove JSON reserved characters
+	private String removeJSONchars(String s){
+		if (s == null)
+			return "";
+		
+		String r = s.replace("[", "");
+		r = r.replace("]", "");
+		r = r.replace("{", "");
+		r = r.replace("}", "");
+		r = r.replace(",", " ");		// replace , with space for readability
+		r = r.replace(":", "");
+		r = r.replace("\"", "");
+		return r;
+		
 	}
 	
 	public int getDistanceFrom(double currentLat, double currentLon){
@@ -186,6 +245,11 @@ public class POI {
 		return (int)result;
 	}
 	
+	public int getDistanceFromRoute(double lat1, double lon1, double lat2, double lon2){
+		// TODO: Implement correct calculation -- returns distance from first point for now.
+		return getDistanceFrom(lat1, lon1);	
+	}
+	
 	public boolean isNearBy(double currentLat, double currentLon, int radius){
 		int distance = getDistanceFrom(currentLat, currentLon);
 		if (distance <= radius)
@@ -195,7 +259,17 @@ public class POI {
 	}
 	
 	public boolean isType(String desiredTypes){
+		if (desiredTypes == null)
+			return true;				// caller doesn't care - match anything
+		
 		return types.contains(desiredTypes);	
 	}
 	
+	
+	public boolean isMd2kType(String desiredTypes){
+		if (desiredTypes == null)
+			return true;				// caller doesn't care - match anything
+		
+		return md2kTypes.contains(desiredTypes);	
+	}
 }

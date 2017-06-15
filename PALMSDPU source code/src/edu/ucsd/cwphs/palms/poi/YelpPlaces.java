@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 
 
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.scribe.builder.ServiceBuilder;
@@ -13,17 +14,20 @@ import org.scribe.model.Token;
 import org.scribe.model.Verb;
 import org.scribe.oauth.OAuthService;
 
+import edu.ucsd.cwphs.palms.gps.WayPoint;
 import edu.ucsd.cwphs.palms.poi.TwoStepOAuth;
 import edu.ucsd.cwphs.palms.util.EventLogger;
 
 public class YelpPlaces {
 	
-	// Replace with your YELP PLACES keys
-	private final String CONSUMER_KEY = "REPLACE ME";
-	private final String CONSUMER_SECRET = "REPLACE ME";
-	private final String TOKEN = "REPLACE ME";
-	private final String TOKEN_SECRET = "REPLACE ME";
-	private final int GOODFOR = 1;			// cannot cache YELP results beyond session
+	// keys registered to fraab@ucsd.edu
+	private final String CONSUMER_KEY = "m0NoXnXamwoTxwCsRAdmvA";
+	private final String CONSUMER_SECRET = "COqkbb7t9l7ZVhh8N6nAqwFIXCY";
+	private final String TOKEN = "31qxM1cGL13tmN1BR_xuUCNPvYg3g7Cu";
+	private final String TOKEN_SECRET = "dm1vIMp-_CQh70uYvQoDUNZ8JT8";
+	private final int GOODFOR = 1;			// cannot cache YELP results beyond session, so keep for 1 day
+	
+	private final int ERROR = -999999;
 
 	private final String API_HOST = "api.yelp.com";
 	private final String SEARCH_PATH = "/v2/search";
@@ -31,6 +35,8 @@ public class YelpPlaces {
 	
 	private static OAuthService service;
 	private static Token accessToken;
+	
+	private static int apiUsageCount = 0;
 	
 	public YelpPlaces() {
 		YelpPlaces.service =
@@ -46,12 +52,22 @@ public class YelpPlaces {
 		YelpPlaces.accessToken = new Token(token, tokenSecret);
 	}
 	
+	public int getApiUsageCount(){
+		return apiUsageCount;
+	}
+	
+	public int clearApiUsageCount(){
+		int i = apiUsageCount;
+		apiUsageCount = 0;
+		return i;
+	}
+	
 	public ArrayList<POI> getNearBy(Double lat, Double lon, int radius){
 		String json = searchForBusinessesByLocation(Double.toString(lat), Double.toString(lon), radius, null);
 		if (gotError(json))
 			return null;
 		else
-			return getPOIsFromJSON(json, lat, lon);
+			return getPOIsFromJSON(json, lat, lon, radius, "");		// any type
 	}
 	
 	public ArrayList<POI> getNearBy(String lat, String lon, int radius){
@@ -59,30 +75,30 @@ public class YelpPlaces {
 		if (gotError(json))
 			return null;
 		else
-			return getPOIsFromJSON(json,  parseDouble(lat), parseDouble(lon));		
+			return getPOIsFromJSON(json,  parseDouble(lat), parseDouble(lon), radius, "");	// any type		
 	}
 	
-	public ArrayList<POI> getNearBy(String lat, String lon, int radius, String types){
-		String json = searchForBusinessesByLocation(lat, lon, radius, types);
+	public ArrayList<POI> getNearBy(String lat, String lon, int radius, String requestedTypes){
+		String json = searchForBusinessesByLocation(lat, lon, radius, requestedTypes);
 		if (gotError(json))
 			return null;
 		else
-			return getPOIsFromJSON(json, parseDouble(lat), parseDouble(lon));	
+			return getPOIsFromJSON(json, parseDouble(lat), parseDouble(lon), radius, requestedTypes);	
 	}
 	
-	public ArrayList<POI> getNearBy(Double lat, Double lon, int radius, String types){
-		String json = searchForBusinessesByLocation(Double.toString(lat), Double.toString(lon), radius, types);
+	public ArrayList<POI> getNearBy(Double lat, Double lon, int radius, String requestedTypes){
+		String json = searchForBusinessesByLocation(Double.toString(lat), Double.toString(lon), radius, requestedTypes);
 		if (gotError(json))
 			return null;
 		else
-			return getPOIsFromJSON(json, lat, lon);	
+			return getPOIsFromJSON(json, lat, lon, radius, requestedTypes);	
 	}
 	
-	public String searchForBusinessesByLocation(String lat, String lon, int radius, String type) {
+	public String searchForBusinessesByLocation(String lat, String lon, int radius, String requestedTypes) {
 		OAuthRequest request = createOAuthRequest(SEARCH_PATH);
-		if (type != null && type.length() > 0){
-			type.replace('|', ','); 				// replace pipes (used by Google, with commas used by Yelp		
-			request.addQuerystringParameter("term", type);
+		if (requestedTypes != null && requestedTypes.length() > 0){
+			requestedTypes.replace('|', ','); 				// replace pipes (used by Google, with commas used by Yelp		
+			request.addQuerystringParameter("term", requestedTypes);
 		}
 		request.addQuerystringParameter("ll", lat + "," + lon);
 		request.addQuerystringParameter("sort", "1");							// sort by distance
@@ -92,19 +108,19 @@ public class YelpPlaces {
 	}
 	
 	
-	// NOTE: Need to supply lat/lon since YELP does not return lat/lon of business
-	
-	private ArrayList<POI> getPOIsFromJSON(String json, Double lat, Double lon){
+	private ArrayList<POI> getPOIsFromJSON(String json, Double lat, Double lon, int radius, String requestedTypes){
 		ArrayList<POI> results = new ArrayList<POI>();
 		String name, placeId, vicinity = null, postalAddress = null;
 		String types = null;
 		String streetAddress="", city= "", state= "", zip = "";
+		Double yelpLat, yelpLon;
+		int distance = 0;
 		
 		JSONObject obj = new JSONObject(json);
 
 		JSONArray array = obj.getJSONArray("businesses");
 		if (array == null){
-			EventLogger.logWarning(".fromJSON - no places found.");
+			EventLogger.logWarning("YelpPlaces.getPOIsFromJSON - no businesses found.");
 			return results;
 		}
 
@@ -114,11 +130,17 @@ public class YelpPlaces {
 				city= "";
 				state= "";
 				zip = "";
+				distance = -1;
 				
 				JSONObject item = array.getJSONObject(index);
 					
 				placeId = getJSONString(item ,"id");
 				name = getJSONString(item, "name");
+				distance = getJSONInt(item, "distance");
+				
+				if (distance == ERROR || distance > radius)
+					continue;				// ignore if not within range
+											// YELP sometimes returns POIs beyond the range
 				
 				JSONObject location = item.getJSONObject("location");
 				if (location != null){
@@ -136,12 +158,24 @@ public class YelpPlaces {
 					if (neighborhoods != null)
 						vicinity = neighborhoods.getString(0);
 					
+					JSONObject coordinate = getJSONObject(location, "coordinate");
+					if (coordinate != null){
+						yelpLat = getJSONDouble(coordinate, "latitude");
+						yelpLon = getJSONDouble(coordinate, "longitude");
+						
+						if (yelpLat != WayPoint.UNKNOWNCOORDINATES && yelpLon != WayPoint.UNKNOWNCOORDINATES){
+							lat = yelpLat;
+							lon = yelpLon;
+						}
+					}
+					
 				} // end if (location != null)
 				
 				types = parseTypes(item);
 
-				POI poi = new POI(placeId, name, POI.SCOPEYELP, types, vicinity, postalAddress, lat, lon);
+				POI poi = new POI(placeId, name, POI.SCOPEYELP, types, requestedTypes, vicinity, postalAddress, lat, lon);
 				poi.setDateToExpire(GOODFOR);
+				poi.setDistance(distance);
 				results.add(poi);
 			}
 			catch (Exception ex){
@@ -182,7 +216,7 @@ public class YelpPlaces {
 	}
 
 	private Double getJSONDouble(JSONObject obj, String key){
-		Double d = -999.0;
+		Double d = WayPoint.UNKNOWNCOORDINATES;
 		try {
 			d = obj.getDouble(key);
 		}
@@ -192,7 +226,7 @@ public class YelpPlaces {
 	}
 	
 	private Double parseDouble(String value){
-		Double d = -180.0;
+		Double d = WayPoint.UNKNOWNCOORDINATES;
 		try {
 			d = Double.parseDouble(value);
 		}
@@ -201,11 +235,22 @@ public class YelpPlaces {
 		return d;
 	}
 	
+	
+	private int getJSONInt(JSONObject obj, String key){
+		int i = ERROR;
+		try {
+			i = (int) obj.getLong(key);
+		}
+		catch (Exception ex){
+		}
+		return i;
+	}
+	
 	private String parseTypes(JSONObject item){
 		String types = "";
 		JSONArray categories = getJSONArray(item, "categories");
 		if (categories == null){
-			EventLogger.logWarning(".fromJSON - no types found.");
+			EventLogger.logWarning("YelpPlaces.parseTypes - no categories found.");
 			return "";
 		}
 		// loop thru categories
@@ -237,6 +282,7 @@ public class YelpPlaces {
 	private String sendRequestAndGetResponse(OAuthRequest request) {
 		EventLogger.logDebug("YelpPlaces - GET Url:" + request.getCompleteUrl() + " ...");
 		YelpPlaces.service.signRequest(YelpPlaces.accessToken, request);
+		apiUsageCount++;
 		Response response = request.send();
 		if (response.getCode() != 200){
 			EventLogger.logEvent("YelpPlaces - Get Failure: " + response.getMessage());	
