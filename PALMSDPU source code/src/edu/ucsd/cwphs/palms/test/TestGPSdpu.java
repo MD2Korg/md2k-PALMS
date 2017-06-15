@@ -17,12 +17,12 @@ public class TestGPSdpu {
 
 	private static void doTest(){
 		GPSTrack track = new GPSTrack();
-		track.fromGPX("testData/Test1.gpx");
+		track.fromGPX("testData/chicago.gpx");
 		EventLogger.logEvent("TestGPSdpu - Number of trackpoints:" + track.getSize());
 		
 		GPSdpu dpu= new GPSdpu();
 		GPSdpuParameters parameters = new GPSdpuParameters();
-		parameters.interval = 120;
+		parameters.interval = 30;
 		
 		String json = parameters.toJSON();
 		parameters.fromJSON(json);
@@ -41,10 +41,8 @@ public class TestGPSdpu {
 		String s = JSONPrettyPrint.print(JSONresults);
 		EventLogger.logEvent("Results = "+ s);
 		
-		/*
-		GPSTrack resultTrack = new GPSTrack();
-		resultTrack.fromJSON(JSONresults);
 		
+		GPSTrack resultTrack = dpu.getTrack();
 		try {
 		KMLexport kml = new KMLexport("logs/test.kml");
 		kml.exportTrack(resultTrack);
@@ -52,7 +50,7 @@ public class TestGPSdpu {
 		catch (Exception ex){
 			EventLogger.logException("Error creating KML file", ex);
 		}	
-		*/
+		
 		
 	}
 }

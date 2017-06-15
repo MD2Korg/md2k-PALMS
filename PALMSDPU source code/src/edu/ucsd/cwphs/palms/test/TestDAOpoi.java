@@ -25,7 +25,8 @@ public class TestDAOpoi {
 //		testInsert();
 //		testFind();
 //		distanceTest("bar | health");
-		mapAllPOIs("");
+		String type = "";
+		mapAllPOIs(type);
 		EventLogger.logEvent("TestDAOpio - Test end");
 	}
 
@@ -33,7 +34,7 @@ public class TestDAOpoi {
 		Double lat = 32.882574;				// Calit2
 		Double lon = -117.234729;
 		DAOpoi dao = new DAOpoi();
-		POI poi = new POI(null, "Calit2", POI.SCOPELOCAL, "Office", "UCSD", "Engineer Lane, La Jolla, CA 92093", lat, lon);
+		POI poi = new POI(null, "Calit2", POI.SCOPELOCAL, "Office", "Office", "UCSD", "Engineer Lane, La Jolla, CA 92093", lat, lon);
 		dao.insertPOI(poi);	
 		dao.closeDB();
 	}
@@ -77,21 +78,21 @@ public static void getAllPOIs(String types){
 
 public static void mapAllPOIs(String types) {
 	try {
-	PrintWriter printWriter = new PrintWriter("logs/kml.kml");
+	PrintWriter printWriter = new PrintWriter("logs/" + types + " POIs.kml");
 	EventLogger eventLogger = new EventLogger();
 
 	DAOpoi dao = new DAOpoi();
 	ArrayList<POI> poiList = dao.getAllPOIs(types);
 	EventLogger.logEvent("Types:" + types + " Number of POIs:" + poiList.size());
 	KMLgenerator kml = new KMLgenerator(eventLogger, printWriter);
-	kml.initKML("mapAllPOIs");
+	kml.initKML(types+" POIs");
 	kml.writeStylePoint("green", "CC00FF00", .45);
 	
 	for (int i = 0; i < poiList.size(); i++){
 		POI poi = poiList.get(i);
 			EventLogger.logEvent(poi.getName() + " - Type:" + poi.getTypes());
 			WayPoint wp = new WayPoint(poi.getLat(), poi.getLon(), 0, poi.getName());
-			wp.desc = poi.getScope();
+			wp.desc = poi.getScope() + ": " + poi.getTypes();
 			kml.addPlacemark(wp, "green", true, poi.getName());			
 	} // end for
 	kml.closeKML();
