@@ -18,6 +18,12 @@ public class LocationDpuResultSet {
 		return results;
 	}
 	
+	public LocationDpuResult get(int index){
+		if (index<0 || index > results.size())
+			return null;
+		return results.get(index);
+	}
+	
 	public LocationDpuResult findLocation(int locationNumber){ 
 		for (int index=0; index<results.size(); index ++){
 			if (results.get(index).getLocationNumber() == locationNumber)

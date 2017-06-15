@@ -4,9 +4,10 @@ import edu.ucsd.cwphs.palms.util.JSONPrettyPrint;
 
 public class LocationDpuParameters {
 
-	private static final String VERSION = "0.1.0   22 Dec 2014";
-	public boolean includePausePoints = false;
+	private static final String VERSION = "1.1.0   27 May 2015";
+	public boolean includePausePoints = true;
 	public boolean includeStationary = false;
+	public boolean includePOIs = true;
 	
 	
 	// return version number
@@ -18,7 +19,8 @@ public class LocationDpuParameters {
 	public String toJSON(){
 		StringBuilder sb = new StringBuilder("{\"location_dpu_parameters\":{");
 		sb.append("\"include_stationary\":" + includeStationary + ",");
-		sb.append("\"include_pause\":" + includePausePoints + "}}");
+		sb.append("\"include_pause\":" + includePausePoints + ",");
+		sb.append("\"include_pois\":" + includePOIs + "}}");
 		return sb.toString();
 	}
 	

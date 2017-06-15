@@ -44,12 +44,15 @@ public class LocationDpu {
 		EventLogger.logEvent(pb.getVersion());
 		EventLogger.logEvent("Parameters = " + pb.prettyPrint());
 		
-		r1.process(pb, data.getResults());
-		resultSet = r1.getResultSet();
+		errors = r1.process(pb, data.getResults());
 		if (errors != null)
 			return errors;
-		else
+		else {
+			if (pb.includePOIs)
+				r1.addPOIs();
+			resultSet = r1.getResultSet();
 			return resultSet.toJSON();
+		}
 	}
 	
 	public String getErrors(){

@@ -11,7 +11,8 @@ public class LocationProcessingR1 {
 	private static final String VERSION = "0.1.0   11 Jan 2015";
 	
 	private String NAME = "";					// TEMP
-	private int BUFFER = 300;					// TEMP
+	private int BUFFER = 30;					// TEMP meters (was 300)
+												// TODO: Read BUFFER from parameters
 	
 	private LocationDpuResultSet rs = new LocationDpuResultSet();	
 	
@@ -87,9 +88,16 @@ public class LocationProcessingR1 {
 		}
 		previousLocationNumber = locationNumber;
 	} // end for index
-
+		
 	return error;
-
 }
+	
+	public void addPOIs(){
+		for (int index=0; index<rs.getSize(); index++){
+			LocationDpuResult ldr = rs.get(index);
+			ldr.addPOIdetails();
+		}	
+		return;
+	}
 		
 }
