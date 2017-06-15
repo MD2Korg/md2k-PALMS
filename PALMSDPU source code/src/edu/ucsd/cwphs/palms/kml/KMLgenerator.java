@@ -8,11 +8,27 @@ import edu.ucsd.cwphs.palms.util.EventLogger;
 
 public class KMLgenerator {
 
+	// Default Styles
+		public static final String RED_POINT = "red_point";
+		public static final String ORANGE_POINT = "orange_point";
+		public static final String YELLOW_POINT = "yellow_point";
+		public static final String GREEN_POINT = "green_point";
+		public static final String BLUE_POINT = "blue_point";
+		public static final String CYAN_POINT = "cyan_point";
+		public static final String GRAY_POINT = "gray_point";
+		
+		public static final String RED_LINE = "red_line";
+		public static final String YELLOW_LINE = "yellow_line";
+		public static final String GREEN_LINE = "green_line";
+		public static final String CYAN_LINE = "cyan_line";
+		
+	
 	    private EventLogger eventLogger;
 	    private PrintWriter printWriter; 
 		private int folderCount, trackCount;
 		private String trackBuffer = "";
 		private String trackCoords ="";
+		private int trackCoordsCount = 0;
 		private boolean enableTimeSlider = false;
 		
 		// stats 
@@ -35,6 +51,7 @@ public class KMLgenerator {
 			folderCount = 0;
 			trackCount = 0;
 			linesWritten = 0;
+			trackCoordsCount = 0;
 			
 			// write initial tags
 			write("<?xml version=\"1.0\" standalone=\"yes\"?>");
@@ -105,15 +122,20 @@ public class KMLgenerator {
 				eventLogger.logWarning("KMLGenerator.closeFolder called without an open folder");
 		}
 		
+		public void addTrack(String name){
+			addTrack(name,null,true);
+		}
+		
 		public void addTrack(String name, String style, boolean visible){
 			trackCount++;
 			buffer("<Placemark>");
 			buffer("  <name><![CDATA["+name+"]]></name>");
 			if (visible)
-				write("  <visibility>1</visibility>");
+				buffer("  <visibility>1</visibility>");
 			else
-				write("  <visibility>0</visibility>");
-			buffer("  <styleUrl>" + style + "</styleUrl>");
+				buffer("  <visibility>0</visibility>");
+			if (style != null)
+				buffer("  <styleUrl>" + style + "</styleUrl>");
 			buffer("  <MultiGeometry>");
 		}
 		
@@ -131,8 +153,9 @@ public class KMLgenerator {
 		}
 		
 		public void addTrackCoords(String lat, String lon, String ele){
-			if (trackCount > 0)
-				trackCoords = trackCoords.concat(lon + "," + lat + "," + ele + " ");	
+			if (trackCount > 0 && trackCoordsCount < 65000)
+				trackCoords = trackCoords.concat(lon + "," + lat + "," + ele + " ");
+			trackCoordsCount++;
 		}
 		
 		public void addTrackSegment(String coords, boolean clamped){
@@ -141,17 +164,26 @@ public class KMLgenerator {
 				buffer("       <altitudeMode>relativeToGround</altitudeMode>");
 				buffer("       <tessellate>0</tessellate>");
 			}
-			else
+			else {
 				buffer("       <altitudeMode>clampToGround</altitudeMode>");
 				buffer("       <tessellate>1</tessellate>");
+			}
 			buffer("       <coordinates>"+coords+"</coordinates>");
 			buffer("    </LineString>");
+			if (trackCoordsCount >= 65000)
+				eventLogger.logWarning("KMLGenerator.addTrackSegment -- truncated number of track coordinates from " +
+										trackCoordsCount + " to 65000");
+			trackCoordsCount = 0;
 		}
 		
 		public void writeTrackCoords(boolean clamped){
 			addTrackSegment(trackCoords, clamped);
 		}
 		
+		public String getTrackBuffer(){
+			return trackBuffer;
+			
+		}
 		public void writeTrack(){
 			write(trackBuffer);
 			trackBuffer = "";
@@ -206,7 +238,8 @@ public class KMLgenerator {
 					write("  <visibility>0</visibility>");
 				if (name != null)
 					write("  <name><![CDATA["+name+"]]></name>");
-				write("  <description><![CDATA["+tp.desc+"]]></description>");
+				if (tp.desc != null)
+					write("  <description><![CDATA["+tp.desc+"]]></description>");
 				write("  <styleUrl>" + style + "</styleUrl>");
 				write("  <Point>");
 				
@@ -374,159 +407,22 @@ public class KMLgenerator {
 			}
 		
 		
-		/*
-		 *  No longer used
-		 *  
-		private void writeDefaultStyles(){
-			
-            write("<Style id = \"unknowntp\">");
-            write("  <IconStyle>");
-            write("     <Icon>");
-            write("        <href>http://maps.google.com/mapfiles/kml/pal2/icon26.png</href>");
-            write("     </Icon>");
-            write("     <color>AAAAAAAA</color>");
-            write("     <colorMode>normal</colorMode>");
-            write("     <scale>0.50</scale>");
-            write("  </IconStyle>");
-            write("  <LabelStyle>");
-            write("     <color>FFCC8800</color>");
-            write("  </LabelStyle>");
-            write("</Style>");
-            
-            write("<Style id = \"rawtp\">");
-            write("  <IconStyle>");
-            write("     <Icon>");
-            write("        <href>http://maps.google.com/mapfiles/kml/pal2/icon26.png</href>");
-            write("     </Icon>");
-            write("     <color>AAFFFFFF</color>");
-            write("     <colorMode>normal</colorMode>");
-            write("     <scale>0.35</scale>");
-            write("  </IconStyle>");
-            write("  <LabelStyle>");
-            write("     <color>FFCC8800</color>");
-            write("  </LabelStyle>");
-            write("</Style>");
-            
-            write("<Style id = \"stationarytp\">");
-            write("  <IconStyle>");
-            write("     <Icon>");
-            write("        <href>http://maps.google.com/mapfiles/kml/pal2/icon26.png</href>");
-            write("     </Icon>");
-            write("     <color>FF00CCCC</color>");
-            write("     <colorMode>normal</colorMode>");
-            write("     <scale>0.40</scale>");
-            write("  </IconStyle>");
-            write("  <LabelStyle>");
-            write("     <color>FFCC8800</color>");
-            write("  </LabelStyle>");
-            write("</Style>");
-            
-            write("<Style id = \"starttp\">");
-            write("  <IconStyle>");
-            write("     <Icon>");
-            write("        <href>http://maps.google.com/mapfiles/kml/pal2/icon26.png</href>");
-            write("     </Icon>");
-            write("     <color>FF00CC00</color>");
-            write("     <colorMode>normal</colorMode>");
-            write("     <scale>0.50</scale>");
-            write("  </IconStyle>");
-            write("  <LabelStyle>");
-            write("     <color>FFCC8800</color>");
-            write("  </LabelStyle>");
-            write("</Style>");
-            
-            write("<Style id = \"midtp\">");
-            write("  <IconStyle>");
-            write("     <Icon>");
-            write("        <href>http://maps.google.com/mapfiles/kml/pal2/icon26.png</href>");
-            write("     </Icon>");
-            write("     <color>FFCC8800</color>");
-            write("     <colorMode>normal</colorMode>");
-            write("     <scale>0.35</scale>");
-            write("  </IconStyle>");
-            write("  <LabelStyle>");
-            write("     <color>FFCC8800</color>");
-            write("  </LabelStyle>");
-            write("</Style>");
-            
-            write("<Style id = \"pausetp\">");
-            write("  <IconStyle>");
-            write("     <Icon>");
-            write("        <href>http://maps.google.com/mapfiles/kml/pal2/icon26.png</href>");
-            write("     </Icon>");
-            write("     <color>FFCCCC00</color>");
-            write("     <colorMode>normal</colorMode>");
-            write("     <scale>0.35</scale>");
-            write("  </IconStyle>");
-            write("  <LabelStyle>");
-            write("     <color>FFCC8800</color>");
-            write("  </LabelStyle>");
-            write("</Style>");
-            
-            write("<Style id = \"endtp\">");
-            write("  <IconStyle>");
-            write("     <Icon>");
-            write("        <href>http://maps.google.com/mapfiles/kml/pal2/icon26.png</href>");
-            write("     </Icon>");
-            write("     <color>FF0000CC</color>");
-            write("     <colorMode>normal</colorMode>");
-            write("     <scale>0.50</scale>");
-            write("  </IconStyle>");
-            write("  <LabelStyle>");
-            write("     <color>FFCC8800</color>");
-            write("  </LabelStyle>");
-            write("</Style>");
-            
-            write("<Style id = \"avgtp\">");
-            write("  <IconStyle>");
-            write("     <Icon>");
-            write("        <href>http://maps.google.com/mapfiles/kml/pal2/icon26.png</href>");
-            write("     </Icon>");
-            write("     <color>CC0077FF</color>");
-            write("     <colorMode>normal</colorMode>");
-            write("     <scale>0.50</scale>");
-            write("  </IconStyle>");
-            write("  <LabelStyle>");
-            write("     <color>FFCC8800</color>");
-            write("  </LabelStyle>");
-            write("</Style>");
-            
-            write("<Style id = \"locationwp\">");
-            write("  <IconStyle>");
-//            write("     <Icon>");
-//            write("        <href>http://maps.google.com/mapfiles/kml/pal2/icon26.png</href>");
-//            write("     </Icon>");
-            write("     <color>CC00FFFF</color>");
-            write("     <colorMode>normal</colorMode>");
-            write("     <scale>0.50</scale>");
-            write("  </IconStyle>");
-            write("  <LabelStyle>");
-            write("     <color>FFCC8800</color>");
-            write("  </LabelStyle>");
-            write("</Style>");
-            
-            write("<Style id = \"trackStyleWalking\">");
-            write("  <LineStyle>");
-            write("     <color>FFCC8800</color>");
-            write("     <width>4</width>");
-            write("  </LineStyle>");
-            write("</Style>");
-            
-            write("<Style id = \"trackStyleAuto\">");
-            write("  <LineStyle>");
-            write("     <color>FFCCCC00</color>");
-            write("     <width>4</width>");
-            write("  </LineStyle>");
-            write("</Style>");
-            
-            write("<Style id = \"trackStyleRunning\">");
-            write("  <LineStyle>");
-            write("     <color>FFCC8800</color>");
-            write("     <width>4</width>");
-            write("  </LineStyle>");
-            write("</Style>");
-		}
-		*/
+		public void defineDefaultStyles(){
+
+			// KML color mask - AABBGGRR
+			writeStylePoint(RED_POINT, "CC0000FF", .40);
+			writeStylePoint(ORANGE_POINT, "CC0099FF", .40);
+			writeStylePoint(YELLOW_POINT, "CC00FFFF", .40);
+			writeStylePoint(GREEN_POINT, "CC00FF00", .40);
+			writeStylePoint(BLUE_POINT, "CCFF0000", .40);
+			writeStylePoint(CYAN_POINT, "CCAAAA00", .40);
+			writeStylePoint(GRAY_POINT, "66AAAAAA", .40);
+
+			writeStyleLine(RED_LINE, "770000FF", 3);		// red
+			writeStyleLine(CYAN_LINE, "77CCCC00", 3);		// cyan
+			writeStyleLine(YELLOW_LINE, "7700CCCC", 3);	// yellow
+			writeStyleLine(GREEN_LINE, "7700FF00", 3);	// green
+			}
 		
 		
 }
