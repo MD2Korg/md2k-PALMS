@@ -5,11 +5,18 @@ import java.io.FileWriter;
 import java.util.Calendar;
 import java.util.Formatter;
 
-
 /**
- * Timestamps and logs messages and errors to text file, typically on the system running the application.
  * 
  * @author Fredric Raab, UCSD CWPHS, fraab@ucsd.edu
+ * @version 1.1.0	
+ * @since 2015-05-28
+ * 
+ * Timestamps and logs messages and errors to text file, 
+ * typically on the system running the application.
+ * 
+ * History:
+ * 		2015-03-31	1.0.0	Initial published release
+ * 		2015-05-28	1.1.0	Added getCounters(), streamlined date/time formating, added javadoc
  *
  */
 	public class EventLogger {
@@ -20,65 +27,80 @@ import java.util.Formatter;
 		private static boolean debug = false;
 		private static boolean errorWritingToFile = false;
 		
-		private static String filename = "logs/EventLogger_";		// production
+		private static String filename = "logs/EventLogger_";		// default file name
 	
+		/**
+		 * Sets counters to zero
+		 */
 		public static void clearCounters(){
 			warningCounter = 0;
 			errorCounter = 0;
 			exceptionCounter = 0;			
 		}
 		
-		public static void setFileName(String s){
-			filename = s;
-			logEvent("Logging to " + filename);
-		}
-		
-		public static void setDebug(boolean b){
-			debug = b;
-		}
-		
-		public static void setWriteToConsole(boolean b){
-			writeToConsole = b;
-		}
-		
-		public static String getCurrentYYYYMMDDStr(){
-			Calendar now = Calendar.getInstance();
-			int currentYear = now.get(Calendar.YEAR);
-			int currentMonth = 1 + now.get(Calendar.MONTH);
-			int currentDay = now.get(Calendar.DAY_OF_MONTH);
-			Formatter fmt = new Formatter();
-			fmt.format("%04d-%02d-%02d", currentYear, currentMonth, currentDay);
-			String s = fmt.toString();
-			fmt.close();
-			return s;
-			
-		}
-		
-		public static String getCurrentDateTimeStr(){
-			Calendar now = Calendar.getInstance();
-			int currentYear = now.get(Calendar.YEAR);
-			int currentMonth = 1 + now.get(Calendar.MONTH);
-			int currentDay = now.get(Calendar.DAY_OF_MONTH);
-			int currentHour = now.get(Calendar.HOUR_OF_DAY);
-			int currentMinute = now.get(Calendar.MINUTE);
-			int currentSecond = now.get(Calendar.SECOND);
-
-			Formatter fmt = new Formatter();		
-			fmt.format("%2d/%02d/%04d %2d:%02d:%02d", currentMonth, currentDay, currentYear, currentHour, currentMinute, currentSecond);
-			String s = fmt.toString();
-			fmt.close();
-			return s;
+		/**
+		 * 
+		 * @return String containing counters
+		 */
+		public static String getCounters(){
+			return "Exceptions:" + exceptionCounter + "  Errors:" + errorCounter + "  Warnings:" + warningCounter;
 		}
 		
 		/**
-		 * Appends message msg to file (Constants.LOGFILE).  Creates file if it doesn't exist.
-		 * Opens file, writes text, flushs and closes file each time to ensure a message 
+		 * sets the directory and file name of the logging file
+		 * 
+		 * @param path to file
+		 */
+		public static boolean setFileName(String logFileName){
+			filename = logFileName + " - ";
+			return logEvent("Logging to " + filename +getCurrentYYYYMMDDStr()+".log");
+		}
+		
+		
+		/**
+		 * 
+		 * @param debugFlag -- when true, log debug messages
+		 */
+		public static void setDebug(boolean debugFlag){
+			debug = debugFlag;
+		}
+		
+		/**
+		 * 
+		 * @param consoleFlag -- when true, also write messages to console (System.out)
+		 */
+		public static void setWriteToConsole(boolean consoleFlag){
+			writeToConsole = consoleFlag;
+		}
+		
+		/**
+		 * 
+		 * @return current date as String in the format YYYY-MM-DD
+		 */
+		public static String getCurrentYYYYMMDDStr(){
+			Calendar now = Calendar.getInstance();	
+			return String.format("%1$tY-%1$tm-%1$td", now);
+		}
+		
+		/**
+		 * 
+		 * @return current date & time as String in the format YYYY-MM-DD HH:MM:SS
+		 */
+		public static String getCurrentDateTimeStr(){
+			Calendar now = Calendar.getInstance();			
+			return String.format("%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS", now);
+		}
+		
+		/**
+		 * Appends message msg to log file.  Creates file if it doesn't exist.
+		 * Opens file, writes text, flushes and closes file each time to ensure a message 
 		 * will not be lost.
 		 * 
 		 * @param msg	Text of message
 		 */
-		public static void logEvent(String msg){
-			String fileName = filename +getCurrentYYYYMMDDStr()+".txt";
+		public static boolean logEvent(String msg){
+			boolean rc = true;
+			String fileName = filename +getCurrentYYYYMMDDStr()+".log";
 			String logStr = getCurrentDateTimeStr() + " " + msg + "\n";
 			
 			debug("LOG: "+ logStr);
@@ -92,12 +114,15 @@ import java.util.Formatter;
 				if (!errorWritingToFile){
 					debug("ERROR Writing to Log file "+ fileName + "- " + ex.toString() + "\n");
 					errorWritingToFile = true;
+					rc = false;
 				}
 			}
+			return rc;
 		}
 
 		/**
 		 * Logs exceptions
+		 * 
 		 * @param msg	Text of message
 		 * @param ex	Exception to be logged
 		 */
@@ -110,6 +135,7 @@ import java.util.Formatter;
 		
 		/**
 		 * Logs errors detected by program
+		 * 
 		 * @param msg	Text of message
 		 */
 		public static void logError(String msg){
@@ -119,6 +145,7 @@ import java.util.Formatter;
 		
 		/**
 		 * Logs warnings detected by program
+		 * 
 		 * @param msg	Text of message
 		 */
 		public static void logWarning(String msg){
@@ -127,13 +154,19 @@ import java.util.Formatter;
 		}
 		
 		
+		/**
+		 * Logs debug messages when debug flag is true
+		 * 
+		 * @param msg	Text of message
+		 */
 		public static void logDebug(String msg){
 			if (debug)
 				logEvent(msg);
 		}
 		
 		/**
-		 * Displays message on console
+		 * Displays message on console when writeToConsole is true
+		 * 
 		 * @param s	String to be displayed
 		 */
 		public static void debug(String s){
