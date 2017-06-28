@@ -17,4 +17,4 @@ For each DPU, 3 JSON schemas are defined:
 *	Output  - output data stream
 *	Parameters – user defined variables and cutoffs used by the processing algorithms.
 
-The GPS, Location, and Trip DPUs are based on existing PALMS services.  The POI DPU will use publically available POI web services provided by Google, FourSquare and others, as well as a user provided database of locally collected POIs (i.e.: advertisements, smoking locations).   
+The GPS, Location, and Trip DPUs are based on existing PALMS services.  The POI DPU use publicly available POI web services provided by Google and Yelp, as well as a user provided database of locally collected POIs (i.e.: advertisements, smoking locations).   
