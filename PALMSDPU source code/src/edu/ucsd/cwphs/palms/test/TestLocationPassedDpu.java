@@ -28,12 +28,21 @@ import edu.ucsd.cwphs.palms.util.WriteToFile;
 
 public class TestLocationPassedDpu {
 	
+	
 	private static boolean PALMSprocessing = true;
+	// When true, the PALMS DPU is used to pre-process and clean the track file
+	// When false, the track is used as-is.
+	
 	
 	private static String fileName = "testData/Test1.gpx";
+	// fileName is the path to the GPX or CSV file containing the track to be processed
+	
+	private static String parmFile = null;
+	// parmFile is the path to the JSON file containing the parameters
+	// when set to null, the default parameters are used
+	
 	private static LocationPassedDpu dpu;
 	private static GPSTrack track;
-	private static String parmFile = null;
 	
 public static void main(String[] args) {
 	
@@ -78,8 +87,8 @@ private static boolean doTest(){
 	
 	if (PALMSprocessing){
 		GPSdpu dpu= new GPSdpu();
-		GPSdpuParameters parameters = new GPSdpuParameters();
-		parameters.interval = 30;
+		GPSdpuParameters parameters = new GPSdpuParameters();	// start with default GPSdpu parameters
+		parameters.interval = 30;								// override default interval
 	
 		String json = parameters.toJSON();
 		parameters.fromJSON(json);
